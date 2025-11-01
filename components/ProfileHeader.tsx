@@ -62,7 +62,7 @@ export function ProfileHeader({
   }
 
   const onEditProfile = () => {
-    router.push('/settings/profile')
+    router.push('/settings')
   }
 
   return (

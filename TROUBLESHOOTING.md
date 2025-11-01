@@ -420,6 +420,37 @@ const corsHeaders = {
 
 ---
 
+## Profile Issues
+
+### ❌ "Edit Profile" button shows error
+
+**Problem**: 404 error when clicking Edit Profile
+
+**Solutions**:
+1. Verify the route exists at `/settings/profile` or `/settings`
+2. Check the navigation path in `ProfileHeader.tsx`
+3. Ensure the settings page component is properly exported
+
+**Fix**:
+Update `ProfileHeader.tsx` to navigate to the correct path:
+```tsx
+const onEditProfile = () => {
+  router.push('/settings') // or '/settings/profile'
+}
+```
+
+### ❌ Profile settings not saving
+
+**Problem**: Changes don't persist after clicking Save
+
+**Solutions**:
+1. Check browser console for errors
+2. Verify user authentication
+3. Check RLS policies allow updates
+4. Ensure form validation passes
+
+---
+
 ## Getting More Help
 
 ### Check Logs
