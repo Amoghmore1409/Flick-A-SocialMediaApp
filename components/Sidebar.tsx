@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Home, Bell, User, TrendingUp, Settings } from 'lucide-react'
+import Image from 'next/image'
+import { Home, Bell, User, Settings, MessageCircle } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
 interface SidebarProps {
@@ -14,6 +15,7 @@ export function Sidebar({ user }: SidebarProps) {
   const navItems = [
     { href: '/timeline', icon: Home, label: 'Home' },
     { href: '/notifications', icon: Bell, label: 'Notifications' },
+    { href: '/messages', icon: MessageCircle, label: 'Messages' },
     { href: `/profile/${user?.username}`, icon: User, label: 'Profile' },
     { href: '/settings', icon: Settings, label: 'Settings' },
   ]
@@ -45,13 +47,22 @@ export function Sidebar({ user }: SidebarProps) {
         <div className="absolute bottom-4 left-4 right-4">
           <div className="card p-4 rounded-lg">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold">
-                {user.display_name?.charAt(0).toUpperCase()}
+              <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                {user.avatar_url ? (
+                  <Image
+                    src={user.avatar_url}
+                    alt={user.display_name || 'User'}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  user.display_name?.charAt(0).toUpperCase() || 'U'
+                )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold truncate">{user.display_name}</p>
+                <p className="font-semibold truncate">{user.display_name || 'Unknown'}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                  @{user.username}
+                  @{user.username || 'anonymous'}
                 </p>
               </div>
             </div>

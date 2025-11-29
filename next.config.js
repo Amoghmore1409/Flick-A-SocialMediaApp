@@ -1,11 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  typescript: {
+    // ⚠️ Only use during development, fix errors for production
+    ignoreBuildErrors: false,
+  },
   images: {
-    domains: ['your-supabase-project.supabase.co'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**.supabase.co',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
       },
     ],
   },

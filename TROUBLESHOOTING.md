@@ -422,32 +422,32 @@ const corsHeaders = {
 
 ## Profile Issues
 
-### ❌ "Edit Profile" button shows error
+### ❌ "Cookies can only be modified in a Server Action or Route Handler"
 
-**Problem**: 404 error when clicking Edit Profile
+**Problem**: Error when accessing profile or timeline pages
 
-**Solutions**:
-1. Verify the route exists at `/settings/profile` or `/settings`
-2. Check the navigation path in `ProfileHeader.tsx`
-3. Ensure the settings page component is properly exported
-
-**Fix**:
-Update `ProfileHeader.tsx` to navigate to the correct path:
-```tsx
-const onEditProfile = () => {
-  router.push('/settings') // or '/settings/profile'
-}
-```
-
-### ❌ Profile settings not saving
-
-**Problem**: Changes don't persist after clicking Save
+**Error**: `Cookies can only be modified in a Server Action or Route Handler`
 
 **Solutions**:
-1. Check browser console for errors
-2. Verify user authentication
-3. Check RLS policies allow updates
-4. Ensure form validation passes
+
+1. **Update server client to read-only**:
+   The `lib/supabase/server.ts` file should only read cookies, not modify them
+
+2. **Create middleware for session refresh**:
+   Add `middleware.ts` in the root to handle cookie updates during auth session refresh
+
+3. **Clear browser data**:
+   ```bash
+   # Clear cookies and refresh
+   # In browser: F12 > Application > Clear storage
+   ```
+
+4. **Restart dev server**:
+   ```bash
+   npm run dev
+   ```
+
+**Root cause**: Next.js 14+ Server Components are read-only and cannot modify cookies. Session refresh must happen in middleware.
 
 ---
 

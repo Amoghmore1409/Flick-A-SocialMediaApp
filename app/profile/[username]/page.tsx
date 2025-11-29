@@ -4,6 +4,7 @@ import { Navbar } from '@/components/Navbar'
 import { Sidebar } from '@/components/Sidebar'
 import { ProfileHeader } from '@/components/ProfileHeader'
 import { PostCard } from '@/components/PostCard'
+import type { User } from '@/lib/types'
 
 export default async function ProfilePage({
   params,
@@ -25,51 +26,51 @@ export default async function ProfilePage({
     .single()
 
   // Get profile user
-  const { data: profileUser } = await supabase
+  const { data: profileUser, error: profileError } = await supabase
     .from('users')
     .select('*')
     .eq('username', params.username)
     .single()
 
-  if (!profileUser) {
+  if (profileError || !profileUser) {
     notFound()
   }
 
-  // Get posts
+  // Type assertion to tell TypeScript profileUser is not null
+  const validProfileUser = profileUser as User
+
+  // Get posts with simplified query
   const { data: posts } = await supabase
     .from('posts')
-    .select(`
-      *,
-      users!posts_user_id_fkey(*),
-      post_media(*),
-      likes(count),
-      shares(count)
-    `)
-    .eq('user_id', profileUser.id)
+    .select('*, users(*), post_media(*)')
+    .eq('user_id', validProfileUser.id)
     .is('reply_to', null)
     .order('created_at', { ascending: false })
+    .limit(50)
 
-  // Get followers count
-  const { count: followersCount } = await supabase
-    .from('follows')
-    .select('*', { count: 'exact', head: true })
-    .eq('followee_id', profileUser.id)
+  // Get counts separately for better performance
+  const [
+    { count: followersCount },
+    { count: followingCount },
+    { data: followData }
+  ] = await Promise.all([
+    supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('followee_id', validProfileUser.id),
+    supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', validProfileUser.id),
+    supabase
+      .from('follows')
+      .select('*')
+      .eq('follower_id', currentUser.id)
+      .eq('followee_id', validProfileUser.id)
+      .maybeSingle()
+  ])
 
-  // Get following count
-  const { count: followingCount } = await supabase
-    .from('follows')
-    .select('*', { count: 'exact', head: true })
-    .eq('follower_id', profileUser.id)
-
-  // Check if current user follows this profile
-  const { data: followData } = await supabase
-    .from('follows')
-    .select('*')
-    .eq('follower_id', currentUser.id)
-    .eq('followee_id', profileUser.id)
-    .single()
-
-  const isOwnProfile = currentUser.id === profileUser.id
+  const isOwnProfile = currentUser.id === validProfileUser.id
   const isFollowing = !!followData
 
   return (
@@ -80,7 +81,7 @@ export default async function ProfilePage({
       <main className="lg:ml-64 pt-16">
         <div className="max-w-2xl mx-auto border-x border-gray-200 dark:border-gray-800 min-h-screen">
           <ProfileHeader
-            user={profileUser}
+            user={validProfileUser}
             isOwnProfile={isOwnProfile}
             followersCount={followersCount ?? 0}
             followingCount={followingCount ?? 0}

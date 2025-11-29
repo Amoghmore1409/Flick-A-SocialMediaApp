@@ -5,7 +5,7 @@ import { createBrowserClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { User } from '@/lib/types'
 import Image from 'next/image'
-import { Camera } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 
 interface ProfileHeaderProps {
   user: User
@@ -37,28 +37,135 @@ export function ProfileHeader({
     
     setLoading(true)
     
-    if (isFollowing) {
-      await supabase
-        .from('follows')
-        .delete()
-        .eq('follower_id', currentUserId)
-        .eq('following_id', user.id)
-      
-      setIsFollowing(false)
-      setFollowersCount(prev => prev - 1)
-    } else {
-      await supabase
-        .from('follows')
-        .insert({
-          follower_id: currentUserId,
-          following_id: user.id,
-        })
-      
-      setIsFollowing(true)
-      setFollowersCount(prev => prev + 1)
+    try {
+      if (isFollowing) {
+        const { error } = await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUserId)
+          .eq('followee_id', user.id) // or 'following_id' - use whatever your table has
+        
+        if (error) throw error
+        
+        setIsFollowing(false)
+        setFollowersCount(prev => prev - 1)
+      } else {
+        const { error } = await supabase
+          .from('follows')
+          .insert({
+            follower_id: currentUserId,
+            followee_id: user.id, // or 'following_id' - use whatever your table has
+          })
+        
+        if (error) throw error
+        
+        setIsFollowing(true)
+        setFollowersCount(prev => prev + 1)
+      }
+    } catch (error) {
+      console.error('Error following/unfollowing:', error)
+      alert('Failed to update follow status')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleMessage = async () => {
+    if (!currentUserId) {
+      alert('Please log in to send messages')
+      return
     }
     
-    setLoading(false)
+    if (!isFollowing) {
+      alert('You must follow this user to send them a message')
+      return
+    }
+    
+    setLoading(true)
+    
+    try {
+      console.log('Starting message conversation...')
+      
+      // Step 1: Check if conversation already exists
+      const { data: myConversations, error: myConvError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', currentUserId)
+
+      console.log('My conversations:', myConversations)
+
+      if (myConvError) {
+        console.error('Error fetching conversations:', myConvError)
+        throw myConvError
+      }
+
+      if (myConversations && myConversations.length > 0) {
+        // Check each conversation for the other user
+        for (const convo of myConversations) {
+          const { data: otherParticipant, error: otherError } = await supabase
+            .from('conversation_participants')
+            .select('user_id')
+            .eq('conversation_id', convo.conversation_id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (otherError) {
+            console.error('Error checking participant:', otherError)
+            continue
+          }
+
+          if (otherParticipant) {
+            console.log('Existing conversation found:', convo.conversation_id)
+            router.push(`/messages/${convo.conversation_id}`)
+            setLoading(false)
+            return
+          }
+        }
+      }
+
+      // Step 2: Create new conversation
+      console.log('Creating new conversation...')
+      const { data: newConvo, error: convoError } = await supabase
+        .from('conversations')
+        .insert({})
+        .select()
+        .single()
+
+      console.log('New conversation result:', { newConvo, convoError })
+
+      if (convoError) {
+        console.error('Conversation creation error:', convoError)
+        throw new Error(`Failed to create conversation: ${convoError.message}`)
+      }
+
+      if (!newConvo) {
+        throw new Error('No conversation data returned')
+      }
+
+      // Step 3: Add participants
+      console.log('Adding participants...')
+      const { error: participantsError } = await supabase
+        .from('conversation_participants')
+        .insert([
+          { conversation_id: newConvo.id, user_id: currentUserId },
+          { conversation_id: newConvo.id, user_id: user.id },
+        ])
+
+      console.log('Participants error:', participantsError)
+
+      if (participantsError) {
+        console.error('Participants error:', participantsError)
+        throw new Error(`Failed to add participants: ${participantsError.message}`)
+      }
+
+      console.log('Success! Redirecting to:', `/messages/${newConvo.id}`)
+      router.push(`/messages/${newConvo.id}`)
+    } catch (error: any) {
+      console.error('Full error:', error)
+      alert(error.message || 'Failed to create conversation. Check console for details.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const onEditProfile = () => {
@@ -83,7 +190,7 @@ export function ProfileHeader({
       <div className="px-4 pb-4">
         <div className="flex justify-between items-start -mt-16 mb-4">
           <div className="relative">
-            <div className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-900 bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-4xl font-bold">
+            <div className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-900 bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-4xl font-bold overflow-hidden">
               {user.avatar_url ? (
                 <Image
                   src={user.avatar_url}
@@ -97,7 +204,7 @@ export function ProfileHeader({
             </div>
           </div>
 
-          <div className="mt-20">
+          <div className="mt-20 flex space-x-2">
             {isOwnProfile ? (
               <button
                 onClick={onEditProfile}
@@ -106,14 +213,27 @@ export function ProfileHeader({
                 Edit Profile
               </button>
             ) : (
-              <button
-                onClick={handleFollow}
-                className={`btn ${
-                  isFollowing ? 'btn-secondary' : 'btn-primary'
-                }`}
-              >
-                {isFollowing ? 'Following' : 'Follow'}
-              </button>
+              <>
+                {isFollowing && (
+                  <button
+                    onClick={handleMessage}
+                    disabled={loading}
+                    className="btn btn-secondary"
+                    title="Send message"
+                  >
+                    <MessageCircle size={20} />
+                  </button>
+                )}
+                <button
+                  onClick={handleFollow}
+                  disabled={loading}
+                  className={`btn ${
+                    isFollowing ? 'btn-secondary' : 'btn-primary'
+                  }`}
+                >
+                  {loading ? '...' : isFollowing ? 'Following' : 'Follow'}
+                </button>
+              </>
             )}
           </div>
         </div>

@@ -2,9 +2,9 @@ import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
 import { Sidebar } from '@/components/Sidebar'
-import { NotificationList } from '@/components/NotificationList'
+import { ChatList } from '@/components/ChatList'
 
-export default async function NotificationsPage() {
+export default async function MessagesPage() {
   const supabase = await createServerClient()
   
   const { data: { user }, error } = await supabase.auth.getUser()
@@ -19,6 +19,10 @@ export default async function NotificationsPage() {
     .eq('id', user.id)
     .single()
 
+  if (!currentUser) {
+    redirect('/auth/login')
+  }
+
   return (
     <div className="min-h-screen">
       <Navbar user={currentUser} />
@@ -27,10 +31,10 @@ export default async function NotificationsPage() {
       <main className="lg:ml-64 pt-16">
         <div className="max-w-2xl mx-auto border-x border-gray-200 dark:border-gray-800 min-h-screen">
           <div className="border-b border-gray-200 dark:border-gray-800 p-4">
-            <h1 className="text-xl font-bold">Notifications</h1>
+            <h1 className="text-xl font-bold">Messages</h1>
           </div>
 
-          <NotificationList userId={user.id} />
+          <ChatList currentUserId={user.id} />
         </div>
       </main>
     </div>

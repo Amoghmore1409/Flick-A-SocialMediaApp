@@ -7,6 +7,7 @@ import { Navbar } from '@/components/Navbar'
 import { Sidebar } from '@/components/Sidebar'
 import { uploadImage, deleteImage } from '@/lib/storage'
 import { User } from '@/lib/types'
+import { LogOut } from 'lucide-react'
 
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -126,6 +127,13 @@ export default function SettingsPage() {
     }
   }
 
+  const handleLogout = async () => {
+    if (confirm('Are you sure you want to log out?')) {
+      await supabase.auth.signOut()
+      router.push('/auth/login')
+    }
+  }
+
   if (!user) {
     return <div>Loading...</div>
   }
@@ -208,11 +216,23 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary"
+                className="btn btn-primary w-full"
               >
                 {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </form>
+
+            {/* Logout Section */}
+            <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
+              <h2 className="text-lg font-semibold mb-4">Account</h2>
+              <button
+                onClick={handleLogout}
+                className="btn bg-red-500 hover:bg-red-600 text-white w-full flex items-center justify-center space-x-2"
+              >
+                <LogOut size={20} />
+                <span>Log Out</span>
+              </button>
+            </div>
           </div>
         </div>
       </main>

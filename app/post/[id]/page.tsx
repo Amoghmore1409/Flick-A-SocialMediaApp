@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/client'
+import { createServerClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
 import { Sidebar } from '@/components/Sidebar'
@@ -10,54 +10,42 @@ export default async function PostPage({
 }: {
   params: { id: string }
 }) {
-  const supabase = createServerClient()
-  
+  const supabase = await createServerClient()
+
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/auth/login')
   }
 
-  const { data: userProfile } = await supabase
+  const { data: currentUser } = await supabase
     .from('users')
     .select('*')
     .eq('id', user.id)
     .single()
 
-  // Get main post
-  const { data: post } = await supabase
+  // Get the post
+  const { data: post, error: postError } = await supabase
     .from('posts')
-    .select(`
-      *,
-      users!posts_user_id_fkey(*),
-      post_media(*),
-      likes(count),
-      shares(count)
-    `)
+    .select('*, users(*), post_media(*)')
     .eq('id', params.id)
     .single()
 
-  if (!post) {
+  if (postError || !post) {
     notFound()
   }
 
   // Get replies
   const { data: replies } = await supabase
     .from('posts')
-    .select(`
-      *,
-      users!posts_user_id_fkey(*),
-      post_media(*),
-      likes(count),
-      shares(count)
-    `)
+    .select('*, users(*), post_media(*)')
     .eq('reply_to', params.id)
     .order('created_at', { ascending: true })
 
   return (
     <div className="min-h-screen">
-      <Navbar user={userProfile} />
-      <Sidebar user={userProfile} />
+      <Navbar user={currentUser} />
+      <Sidebar user={currentUser} />
       
       <main className="lg:ml-64 pt-16">
         <div className="max-w-2xl mx-auto border-x border-gray-200 dark:border-gray-800 min-h-screen">
@@ -65,28 +53,23 @@ export default async function PostPage({
             <h1 className="text-xl font-bold">Post</h1>
           </div>
 
-          <PostCard post={post as any} currentUserId={user.id} />
+          <PostCard post={post} currentUserId={user.id} />
 
-          <div className="border-y border-gray-200 dark:border-gray-800 p-4">
-            <h2 className="text-lg font-semibold mb-4">Reply to this post</h2>
+          <div className="border-t border-gray-200 dark:border-gray-800 p-4">
             <PostComposer replyTo={params.id} />
           </div>
 
-          <div>
-            {replies && replies.length > 0 ? (
-              replies.map((reply: any) => (
+          {replies && replies.length > 0 && (
+            <div className="border-t border-gray-200 dark:border-gray-800">
+              {replies.map((reply: any) => (
                 <PostCard
                   key={reply.id}
                   post={reply}
                   currentUserId={user.id}
                 />
-              ))
-            ) : (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                <p>No replies yet. Be the first to reply!</p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

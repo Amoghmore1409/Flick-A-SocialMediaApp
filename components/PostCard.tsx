@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { PostWithAuthor } from '@/lib/types'
 import { createBrowserClient } from '@/lib/supabase/client'
 import { useState } from 'react'
+import Image from 'next/image'
 
 interface PostCardProps {
   post: PostWithAuthor
@@ -97,11 +98,20 @@ export function PostCard({ post, currentUserId, onUpdate }: PostCardProps) {
   }
 
   return (
-    <article className="card border-b border-gray-200 dark:border-gray-800 p-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
+    <div className="card border-b border-gray-200 dark:border-gray-800 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
       <div className="flex space-x-3">
         <Link href={`/profile/${post.users.username}`}>
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-            {post.users.display_name?.charAt(0).toUpperCase()}
+          <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold overflow-hidden cursor-pointer">
+            {post.users.avatar_url ? (
+              <Image
+                src={post.users.avatar_url}
+                alt={post.users.display_name}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              post.users.display_name?.charAt(0).toUpperCase()
+            )}
           </div>
         </Link>
 
@@ -176,6 +186,6 @@ export function PostCard({ post, currentUserId, onUpdate }: PostCardProps) {
           </div>
         </div>
       </div>
-    </article>
+    </div>
   )
 }
